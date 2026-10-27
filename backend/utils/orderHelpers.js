@@ -1,0 +1,771 @@
+import Cart from "../models/Cart.js";
+import Address from "../models/address/Address.js";
+import Order from "../models/order/Order.js";
+import Product from "../models/Product.js";
+import User from "../models/user.js";
+import {
+  getAvailableColors,
+  getUnitPriceForQuantity,
+  getVariant,
+  getVariantStock,
+  isMultiVariant,
+  isProductInStock,
+  PRODUCT_PRICING_SELECT,
+} from "./productPricing.js";
+import {
+  calculateShippingCharge,
+  getStoreSettings,
+} from "./storeSettingsHelpers.js";
+import { calculateOrderTotal } from "./gstHelpers.js";
+import { getRecordedAdvancePaidAmount } from "./paymentHelpers.js";
+import { resolveCouponForCheckout } from "../controllers/couponController.js";
+import { resolveGiftHamperForOrder, getCustomerVisibleGiftHamper } from "../../shared/store/giftHamper.js";
+
+async function computeOrderPricing(subtotal, couponCode, options = {}) {
+  const storeSettings = await getStoreSettings();
+  let resolvedCouponCode = "";
+  let couponDiscount = 0;
+
+  if (couponCode) {
+    const couponResult = await resolveCouponForCheckout(couponCode, subtotal, {
+      userId: options.userId,
+      excludeOrderId: options.excludeOrderId,
+    });
+    if (couponResult.error) {
+      return {
+        error: couponResult.error,
+        status: 400,
+        code: "INVALID_COUPON",
+      };
+    }
+    resolvedCouponCode = couponResult.couponCode;
+    couponDiscount = couponResult.couponDiscount;
+  }
+
+  const deliveryCharges = calculateShippingCharge(subtotal, storeSettings);
+  const discountedSubtotal = Math.max(0, subtotal - couponDiscount);
+  const { gstAmount, total } = calculateOrderTotal(discountedSubtotal, deliveryCharges);
+
+  return {
+    storeSettings,
+    deliveryCharges,
+    gstAmount,
+    total,
+    couponCode: resolvedCouponCode,
+    couponDiscount,
+  };
+}
+
+const normalizeVariantName = (value) =>
+  typeof value === "string" ? value.trim() : "";
+
+const normalizeColorName = (value) =>
+  typeof value === "string" ? value.trim() : "";
+
+const normalizeStrength = (value) =>
+  typeof value === "string" ? value.trim() : "";
+
+const buildCheckoutLineKey = (
+  productId,
+  variantName = "",
+  colorName = "",
+  strength = ""
+) =>
+  `${String(productId || "")}::${normalizeVariantName(variantName)}::${normalizeColorName(colorName)}::${normalizeStrength(strength)}`;
+
+function resolveItemStrength(product, strength) {
+  const normalized = normalizeStrength(strength);
+  const options = Array.isArray(product?.strength) ? product.strength : [];
+
+  if (options.length === 0) {
+    return { strength: "" };
+  }
+
+  if (!normalized) {
+    return {
+      error: `Strength selection is required for ${product?.name || "this product"}`,
+      status: 400,
+    };
+  }
+
+  const match = options.find(
+    (option) => option?.trim().toLowerCase() === normalized.toLowerCase()
+  );
+
+  if (!match) {
+    return {
+      error: `Selected strength is not available for ${product?.name || "this product"}`,
+      status: 400,
+    };
+  }
+
+  return { strength: match.trim() };
+}
+
+function applyCheckoutItemOverrides(itemsToProcess, checkoutItems) {
+  const overrideMap = new Map();
+
+  if (Array.isArray(checkoutItems)) {
+    checkoutItems.forEach((entry) => {
+      const key = buildCheckoutLineKey(
+        entry.productId || entry._id,
+        entry.variantName,
+        entry.colorName,
+        entry.strength
+      );
+      overrideMap.set(key, normalizeStrength(entry.strength));
+    });
+  }
+
+  return itemsToProcess.map((item) => {
+    const productId = item.product?._id || item.product;
+    const key = buildCheckoutLineKey(
+      productId,
+      item.variantName,
+      item.colorName,
+      item.strength
+    );
+    const strength = overrideMap.has(key)
+      ? overrideMap.get(key)
+      : normalizeStrength(item.strength);
+
+    const productDoc = item.product;
+    const plain =
+      typeof item.toObject === "function" ? item.toObject({ depopulate: false }) : { ...item };
+
+    return {
+      ...plain,
+      product: productDoc,
+      strength,
+    };
+  });
+}
+
+function validateResolvedItemStrengths(items) {
+  for (const item of items) {
+    const result = resolveItemStrength(item.product, item.strength);
+    if (result.error) {
+      return { error: result.error, status: result.status || 400 };
+    }
+    item.strength = result.strength;
+  }
+
+  return { items };
+}
+
+const matchesOrderedItem = (cartItem, orderItem) => {
+  const cartProductId = String(cartItem?.product?._id || cartItem?.product || "");
+  const orderProductId = String(orderItem?.product?._id || orderItem?.product || "");
+
+  return (
+    cartProductId === orderProductId &&
+    normalizeVariantName(cartItem.variantName) ===
+      normalizeVariantName(orderItem.variantName) &&
+    normalizeColorName(cartItem.colorName) === normalizeColorName(orderItem.colorName) &&
+    normalizeStrength(cartItem.strength) === normalizeStrength(orderItem.strength)
+  );
+};
+
+export function resolveCheckoutMode(options = {}) {
+  if (options.checkoutMode === "buyNow" || options.buyNow === true) {
+    return "buyNow";
+  }
+  return "cart";
+}
+
+export function normalizeOrderMessage(body = {}) {
+  const raw = body.customerMessage ?? body.message ?? body.customerNote ?? "";
+  return typeof raw === "string" ? raw.trim().slice(0, 500) : "";
+}
+
+const ORDER_SOURCES = new Set(["website", "app", "admin"]);
+
+export function normalizeOrderSource(value, fallback = "website") {
+  const normalized = String(value || "")
+    .trim()
+    .toLowerCase();
+  if (normalized === "mobile") return "app";
+  if (ORDER_SOURCES.has(normalized)) return normalized;
+  return ORDER_SOURCES.has(fallback) ? fallback : "website";
+}
+
+const populateCart = (query) =>
+  query.populate({
+    path: "items.product",
+    select: PRODUCT_PRICING_SELECT,
+  });
+
+export const populateOrderItems = (query) =>
+  query.populate({
+    path: "items.product",
+    select: "productImages",
+  });
+
+export function enrichOrderForResponse(
+  order,
+  { customerView = false, verifiedAdvancePayment = null } = {}
+) {
+  const doc = typeof order.toObject === "function" ? order.toObject() : { ...order };
+  const giftHamper = customerView
+    ? getCustomerVisibleGiftHamper(doc.giftHamper)
+    : doc.giftHamper ?? null;
+  const advancePaidAmount = getRecordedAdvancePaidAmount(doc, verifiedAdvancePayment);
+
+  return {
+    ...doc,
+    advancePaidAmount,
+    giftHamper,
+    items: (doc.items || []).map((item) => {
+      const productImages =
+        item.product && typeof item.product === "object" ? item.product.productImages || [] : [];
+      const productImage = productImages[0] || "";
+      const storedImage = (item.image || "").trim();
+
+      return {
+        ...item,
+        image: storedImage || productImage,
+        productImage,
+        product: item.product?._id || item.product,
+      };
+    }),
+  };
+}
+
+export function addressToSnapshot(address) {
+  const raw = typeof address.toObject === "function" ? address.toObject() : address;
+
+  return {
+    fullName: (raw.fullName || raw.name || "").trim(),
+    number: String(raw.number || raw.phone || "").trim(),
+    email: String(raw.email || "").trim().toLowerCase(),
+    shopNo: (raw.shopNo || "").trim(),
+    shopName: (raw.shopName || "").trim(),
+    fullAddress: (raw.fullAddress || raw.streetArea || raw.landmark || "").trim(),
+    landmark: (raw.landmark || "").trim(),
+    city: (raw.city || "").trim(),
+    state: (raw.state || "").trim(),
+    pincode: String(raw.pincode || "").trim(),
+  };
+}
+
+export function listUnavailableCartItems(items = []) {
+  const unavailable = [];
+  const available = [];
+
+  for (const item of items) {
+    if (!item?.product) {
+      unavailable.push({
+        productId: item?.product,
+        name: "Unavailable product",
+        reason: "missing",
+      });
+      continue;
+    }
+
+    if (item.product.isActive === false) {
+      unavailable.push({
+        productId: item.product._id,
+        name: item.product.name || "Unavailable product",
+        reason: "inactive",
+      });
+      continue;
+    }
+
+    const variantName = normalizeVariantName(item.variantName);
+    if (!isProductInStock(item.product, variantName)) {
+      unavailable.push({
+        productId: item.product._id,
+        name: item.product.name || "Unavailable product",
+        reason: "out_of_stock",
+      });
+      continue;
+    }
+
+    available.push(item);
+  }
+
+  return { unavailable, available };
+}
+
+export async function pruneUnavailableCartItems(cart) {
+  if (!cart?.items?.length) {
+    return { removed: [], changed: false };
+  }
+
+  const { unavailable, available } = listUnavailableCartItems(cart.items);
+  if (!unavailable.length) {
+    return { removed: [], changed: false };
+  }
+
+  cart.items = available;
+  await cart.save();
+  return { removed: unavailable, changed: true };
+}
+
+async function resolveCheckoutItems(rawItems, { skipStockCheck = false } = {}) {
+  if (!Array.isArray(rawItems) || rawItems.length === 0) {
+    return { error: "No items to checkout", status: 400 };
+  }
+
+  const resolved = [];
+
+  for (const entry of rawItems) {
+    const productId = entry.productId || entry._id;
+    const normalizedVariantName = normalizeVariantName(entry.variantName);
+    const normalizedColorName = normalizeColorName(entry.colorName);
+    const normalizedStrength = normalizeStrength(entry.strength);
+    const qty = Number(entry.quantity);
+
+    if (!productId || !Number.isFinite(qty) || qty < 1) {
+      return { error: "Invalid checkout item", status: 400 };
+    }
+
+    const product = await Product.findById(productId).select(PRODUCT_PRICING_SELECT);
+    if (!product || product.isActive === false) {
+      return {
+        error: "One or more products are no longer available",
+        status: 404,
+        code: "CART_ITEMS_UNAVAILABLE",
+      };
+    }
+
+    if (isMultiVariant(product)) {
+      if (!normalizedVariantName) {
+        return {
+          error: "Variant selection is required for this product",
+          status: 400,
+        };
+      }
+
+      if (!getVariant(product, normalizedVariantName)) {
+        return {
+          error: "Selected variant is not available",
+          status: 400,
+        };
+      }
+    }
+
+    const availableColors = getAvailableColors(product, normalizedVariantName);
+    if (availableColors.length > 0) {
+      if (!normalizedColorName) {
+        return {
+          error: "Color selection is required for this product",
+          status: 400,
+        };
+      }
+
+      const colorMatch = availableColors.some(
+        (color) =>
+          color.name?.trim().toLowerCase() === normalizedColorName.toLowerCase()
+      );
+
+      if (!colorMatch) {
+        return {
+          error: "Selected color is not available",
+          status: 400,
+        };
+      }
+    }
+
+    const availableStock = getVariantStock(product, normalizedVariantName);
+    if (!skipStockCheck && qty > availableStock) {
+      return {
+        error:
+          availableStock <= 0
+            ? `${product.name} is out of stock`
+            : `Only ${availableStock} units available in stock`,
+        status: 400,
+        code: availableStock <= 0 ? "CART_ITEMS_UNAVAILABLE" : "INSUFFICIENT_STOCK",
+      };
+    }
+
+    const strengthResult = resolveItemStrength(product, normalizedStrength);
+    if (strengthResult.error) {
+      return {
+        error: strengthResult.error,
+        status: strengthResult.status || 400,
+      };
+    }
+
+    resolved.push({
+      product,
+      quantity: qty,
+      variantName: normalizedVariantName,
+      colorName: normalizedColorName,
+      strength: strengthResult.strength,
+    });
+  }
+
+  return { items: resolved };
+}
+
+function buildOrderItemsFromResolved(items) {
+  const orderItems = [];
+  let subtotal = 0;
+
+  for (const item of items) {
+    if (!item.product || item.product.isActive === false) {
+      return {
+        error: "One or more products are no longer available",
+        status: 400,
+        code: "CART_ITEMS_UNAVAILABLE",
+      };
+    }
+
+    const variantName = item.variantName || "";
+    const colorName = item.colorName || "";
+    const strength = item.strength || "";
+
+    if (!isProductInStock(item.product, variantName)) {
+      return {
+        error: `${item.product.name || "One or more products"} is out of stock`,
+        status: 400,
+        code: "CART_ITEMS_UNAVAILABLE",
+      };
+    }
+
+    const price = getUnitPriceForQuantity(item.product, item.quantity, variantName);
+    subtotal += price * item.quantity;
+
+    orderItems.push({
+      product: item.product._id,
+      name: item.product.name,
+      brandName: item.product.brandName || "",
+      variantName,
+      colorName,
+      strength,
+      price,
+      quantity: item.quantity,
+      image: item.product.productImages?.[0] || "",
+    });
+  }
+
+  return { orderItems, subtotal };
+}
+
+export async function prepareOrderData(userId, addressId, options = {}) {
+  const address = await Address.findOne({ _id: addressId, user: userId });
+  if (!address) {
+    return { error: "Address not found", status: 404 };
+  }
+
+  const checkoutMode = resolveCheckoutMode(options);
+  let itemsToProcess = [];
+  let cart = null;
+
+  if (checkoutMode === "buyNow") {
+    const resolved = await resolveCheckoutItems(options.checkoutItems);
+    if (resolved.error) {
+      return { error: resolved.error, status: resolved.status };
+    }
+    itemsToProcess = resolved.items;
+    cart = await populateCart(Cart.findOne({ user: userId }));
+  } else {
+    cart = await populateCart(Cart.findOne({ user: userId }));
+    if (!cart?.items?.length) {
+      return { error: "Your cart is empty", status: 400 };
+    }
+
+    const { removed } = await pruneUnavailableCartItems(cart);
+    if (removed.length) {
+      const names = removed.map((item) => item.name).join(", ");
+      return {
+        error: `These items are no longer available: ${names}. They were removed from your cart. Please review and try again.`,
+        status: 400,
+        code: "CART_ITEMS_UNAVAILABLE",
+        removedItems: removed,
+      };
+    }
+
+    if (!cart.items.length) {
+      return { error: "Your cart is empty", status: 400 };
+    }
+
+    itemsToProcess = cart.items;
+  }
+
+  itemsToProcess = applyCheckoutItemOverrides(itemsToProcess, options.checkoutItems);
+  const strengthValidation = validateResolvedItemStrengths(itemsToProcess);
+  if (strengthValidation.error) {
+    return strengthValidation;
+  }
+  itemsToProcess = strengthValidation.items;
+
+  const built = buildOrderItemsFromResolved(itemsToProcess);
+  if (built.error) {
+    return built;
+  }
+
+  const { orderItems, subtotal } = built;
+
+  const pricing = await computeOrderPricing(subtotal, options.couponCode, {
+    userId,
+    excludeOrderId: options.excludeOrderId,
+  });
+  if (pricing.error) {
+    return pricing;
+  }
+
+  const { storeSettings, deliveryCharges, gstAmount, total, couponCode, couponDiscount } =
+    pricing;
+
+  const deliveryAddress = addressToSnapshot(address);
+  const requiredSnapshotFields = [
+    "fullName",
+    "number",
+    "email",
+    "fullAddress",
+    "landmark",
+    "city",
+    "state",
+    "pincode",
+  ];
+  const hasCompleteAddress = requiredSnapshotFields.every((field) => deliveryAddress[field]);
+
+  if (!hasCompleteAddress) {
+    return {
+      error:
+        "Delivery address is incomplete. Please edit or re-add your address before placing the order.",
+      status: 400,
+    };
+  }
+
+  return {
+    orderItems,
+    deliveryAddress,
+    subtotal,
+    couponCode,
+    couponDiscount,
+    deliveryCharges,
+    gstAmount,
+    total,
+    cart,
+    checkoutMode,
+  };
+}
+
+export async function rebuildOrderFromItemsInput(rawItems) {
+  if (!Array.isArray(rawItems) || rawItems.length === 0) {
+    return { error: "Order must have at least one item", status: 400 };
+  }
+
+  const resolved = await resolveCheckoutItems(rawItems, { skipStockCheck: true });
+  if (resolved.error) {
+    return resolved;
+  }
+
+  const built = buildOrderItemsFromResolved(resolved.items);
+  if (built.error) {
+    return built;
+  }
+
+  const storeSettings = await getStoreSettings();
+  const deliveryCharges = calculateShippingCharge(built.subtotal, storeSettings);
+  const { gstAmount, total } = calculateOrderTotal(built.subtotal, deliveryCharges);
+
+  return {
+    orderItems: built.orderItems,
+    subtotal: built.subtotal,
+    deliveryCharges,
+    gstAmount,
+    total,
+  };
+}
+
+function buildPendingDeliveryAddress(user, address = null) {
+  if (address) {
+    const snapshot = addressToSnapshot(address);
+    const fields = [
+      "fullName",
+      "number",
+      "email",
+      "fullAddress",
+      "landmark",
+      "city",
+      "state",
+      "pincode",
+    ];
+    if (fields.every((field) => snapshot[field])) {
+      return snapshot;
+    }
+  }
+
+  const rawPhone = String(user?.phone || "").trim();
+  const phone = /^[6789]\d{9}$/.test(rawPhone) ? rawPhone : "6000000000";
+  const rawEmail = String(user?.email || "").trim().toLowerCase();
+  const email = /^\S+@\S+\.\S+$/.test(rawEmail) ? rawEmail : "customer@example.com";
+
+  return {
+    fullName: (user?.name || "Customer").trim(),
+    number: phone,
+    email,
+    shopNo: "",
+    shopName: "",
+    fullAddress: "Address to be confirmed",
+    landmark: "Pending",
+    city: "Pending",
+    state: "Pending",
+    pincode: "110001",
+  };
+}
+
+async function resolveItemsForCheckout(userId, options = {}) {
+  const checkoutMode = resolveCheckoutMode(options);
+  let itemsToProcess = [];
+  let cart = null;
+
+  if (checkoutMode === "buyNow") {
+    const resolved = await resolveCheckoutItems(options.checkoutItems, {
+      skipStockCheck: Boolean(options.skipStockCheck),
+    });
+    if (resolved.error) {
+      return resolved;
+    }
+    itemsToProcess = resolved.items;
+    cart = await populateCart(Cart.findOne({ user: userId }));
+  } else {
+    cart = await populateCart(Cart.findOne({ user: userId }));
+    if (!cart?.items?.length) {
+      return { error: "Your cart is empty", status: 400 };
+    }
+
+    const { unavailable, available } = listUnavailableCartItems(cart.items);
+    if (unavailable.length) {
+      cart.items = available;
+      await cart.save();
+      const names = unavailable.map((item) => item.name).join(", ");
+      return {
+        error: `These items are no longer available: ${names}. They were removed from your cart. Please review and try again.`,
+        status: 400,
+        code: "CART_ITEMS_UNAVAILABLE",
+        removedItems: unavailable,
+      };
+    }
+
+    itemsToProcess = cart.items;
+  }
+
+  itemsToProcess = applyCheckoutItemOverrides(itemsToProcess, options.checkoutItems);
+  const strengthValidation = validateResolvedItemStrengths(itemsToProcess);
+  if (strengthValidation.error) {
+    return strengthValidation;
+  }
+  itemsToProcess = strengthValidation.items;
+
+  return { itemsToProcess, cart, checkoutMode };
+}
+
+async function clearCartAfterCheckout(cart, checkoutMode, orderItems, userId) {
+  if (checkoutMode === "cart") {
+    if (cart) {
+      cart.items = [];
+      await cart.save();
+      return;
+    }
+
+    if (userId) {
+      await Cart.findOneAndUpdate({ user: userId }, { $set: { items: [] } });
+    }
+    return;
+  }
+
+  if (!cart) return;
+
+  cart.items = cart.items.filter(
+    (item) => !orderItems.some((ordered) => matchesOrderedItem(item, ordered))
+  );
+
+  await cart.save();
+}
+
+async function resolveGiftHamperSnapshot(total) {
+  const storeSettings = await getStoreSettings();
+  return resolveGiftHamperForOrder(total, storeSettings);
+}
+
+export async function finalizeOrder({
+  userId,
+  orderItems,
+  deliveryAddress,
+  subtotal,
+  couponCode = "",
+  couponDiscount = 0,
+  deliveryCharges,
+  gstAmount = 0,
+  total,
+  cart,
+  checkoutMode = "cart",
+  paymentMethod,
+  paymentStatus,
+  status = "confirm",
+  razorpayOrderId,
+  razorpayPaymentId,
+  codAdvanceAmount = 0,
+  codAdvanceRazorpayPaymentId = "",
+  razorpayPaidAmount = 0,
+  codAdvancePaidAt = null,
+  paidAt,
+  message = "",
+  orderSource = "website",
+}) {
+  const razorpayPaymentKey = String(razorpayPaymentId || "").trim();
+  const codAdvancePaymentKey = String(codAdvanceRazorpayPaymentId || "").trim();
+  const razorpayOrderKey = String(razorpayOrderId || "").trim();
+
+  if (razorpayPaymentKey || codAdvancePaymentKey || razorpayOrderKey) {
+    const existingPaid = await Order.findOne({
+      user: userId,
+      status: { $ne: "attempted" },
+      $or: [
+        ...(razorpayPaymentKey ? [{ razorpayPaymentId: razorpayPaymentKey }] : []),
+        ...(codAdvancePaymentKey
+          ? [{ codAdvanceRazorpayPaymentId: codAdvancePaymentKey }]
+          : []),
+        ...(razorpayOrderKey ? [{ razorpayOrderId: razorpayOrderKey }] : []),
+      ],
+    }).sort({ createdAt: -1 });
+
+    if (existingPaid) {
+      await clearCartAfterCheckout(cart, checkoutMode, orderItems, userId);
+      return existingPaid;
+    }
+  }
+
+  const orderMessage =
+    typeof message === "string" ? message.trim().slice(0, 500) : "";
+
+  const giftHamper = await resolveGiftHamperSnapshot(total);
+
+  const order = await Order.create({
+    user: userId,
+    items: orderItems,
+    deliveryAddress,
+    paymentMethod,
+    subtotal,
+    couponCode: couponCode || "",
+    couponDiscount: couponDiscount > 0 ? couponDiscount : 0,
+    deliveryCharges,
+    gstAmount: gstAmount > 0 ? gstAmount : 0,
+    total,
+    status,
+    paymentStatus,
+    message: orderMessage,
+    orderSource: normalizeOrderSource(orderSource),
+    ...(giftHamper ? { giftHamper } : {}),
+    ...(razorpayOrderId && { razorpayOrderId }),
+    ...(razorpayPaymentId && { razorpayPaymentId }),
+    ...(codAdvanceAmount > 0 && { codAdvanceAmount }),
+    ...(razorpayPaidAmount > 0 && { razorpayPaidAmount }),
+    ...(codAdvanceRazorpayPaymentId && { codAdvanceRazorpayPaymentId }),
+    ...(codAdvancePaidAt && { codAdvancePaidAt }),
+    ...(paidAt && { paidAt }),
+  });
+
+  await User.findByIdAndUpdate(userId, {
+    $addToSet: { orders: order._id },
+  });
+
+  await clearCartAfterCheckout(cart, checkoutMode, orderItems, userId);
+
+  return order;
+}

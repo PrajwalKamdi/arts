@@ -1,0 +1,170 @@
+import { useEffect, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useCart } from "../../context/CartContext";
+import { CONTACT_PHONE_DISPLAY, CONTACT_PHONE_TEL } from "../../config/contact";
+import { buildProductSearchUrl } from "../../utils/productSearch";
+import { NotificationDropdown } from "./NotificationDropdown";
+import { SiteBrand } from "./SiteBrand";
+import { ICON_HIT_MD, ICON_SVG_MD, iconCountBadgeClass } from "../../utils/iconLayout";
+
+function SearchBar({ className = "" }) {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const [query, setQuery] = useState("");
+
+  useEffect(() => {
+    setQuery(searchParams.get("q") || "");
+  }, [searchParams]);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const trimmed = query.trim();
+    if (!trimmed) return;
+    navigate(buildProductSearchUrl(trimmed));
+  };
+
+  return (
+    <form
+      className={`flex h-9 items-center gap-2 rounded-full border border-neutral-200 bg-white pl-3 pr-1 shadow-sm transition focus-within:border-neutral-400 focus-within:ring-2 focus-within:ring-neutral-100 md:h-10 md:pl-4 ${className}`}
+      onSubmit={handleSubmit}
+    >
+      <svg
+        className="h-4 w-4 shrink-0 text-neutral-400"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth={2}
+        aria-hidden="true"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"
+        />
+      </svg>
+      <input
+        type="search"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="Search all products, brands and more..."
+        className="min-w-0 flex-1 bg-transparent text-xs text-gray-700 placeholder:text-gray-400 focus:outline-none md:text-sm"
+      />
+      <button
+        type="submit"
+        aria-label="Search"
+        className="shrink-0 rounded-full bg-primary px-3 py-1.5 text-xs font-bold text-white transition hover:bg-primary-dark md:px-4 md:py-2 md:text-sm"
+      >
+        Search
+      </button>
+    </form>
+  );
+}
+
+function UtilityIcons({ user, onLoginClick }) {
+  const { cartCount } = useCart();
+
+  const handleCartClick = (e) => {
+    if (!user) {
+      e.preventDefault();
+      onLoginClick();
+    }
+  };
+  return (
+    <div className="flex items-center shrink-0 justify-end">
+      <div className="hidden xl:flex items-center gap-2 pr-4 mr-4 border-r border-gray-200 text-gray-800">
+        <svg className="w-4 h-4 shrink-0 text-neutral-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+        </svg>
+        <div className="text-[11px] leading-snug">
+          <a href={CONTACT_PHONE_TEL} className="font-semibold whitespace-nowrap transition hover:text-neutral-900">
+            {CONTACT_PHONE_DISPLAY}
+          </a>
+          <p className="text-gray-500">Mon - Sat: 10:00 AM - 7:00 PM</p>
+        </div>
+      </div>
+
+      <NotificationDropdown user={user} onLoginClick={onLoginClick} />
+
+      <div className="w-px h-9 bg-gray-200 mx-1 lg:mx-2" aria-hidden="true" />
+
+      <button
+        type="button"
+        onClick={onLoginClick}
+        className="flex flex-col items-center justify-center gap-1 px-3 text-gray-700 transition hover:text-neutral-900 lg:px-4"
+      >
+        <svg className={ICON_SVG_MD} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+        </svg>
+        <span className="text-[10px] font-medium whitespace-nowrap">
+          {user ? user.name.split(" ")[0] : "Login / Sign Up"}
+        </span>
+      </button>
+
+      <div className="w-px h-9 bg-gray-200 mx-1 lg:mx-2" aria-hidden="true" />
+
+      <Link
+        to="/cart"
+        onClick={handleCartClick}
+        className="flex flex-col items-center justify-center gap-1 px-3 text-gray-700 transition hover:text-neutral-900 lg:px-4"
+      >
+        <span className="relative inline-flex overflow-visible">
+          <svg className={ICON_SVG_MD} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" />
+          </svg>
+          {user && cartCount > 0 ? (
+            <span className={iconCountBadgeClass(false)}>{cartCount > 99 ? "99+" : cartCount}</span>
+          ) : null}
+        </span>
+        <span className="text-[10px] font-medium">My Cart</span>
+      </Link>
+    </div>
+  );
+}
+
+
+function Header({ user, onLoginClick, onMenuToggle, menuOpen }) {
+  return (
+    <div className="border-b border-black/[0.06] bg-white/85 backdrop-blur-xl">
+      <div className="mx-auto max-w-[1600px] px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-6 lg:px-10">
+        {/* Mobile: logo + menu */}
+        <div className="flex min-w-0 items-center justify-between gap-3 md:hidden">
+          <SiteBrand variant="headerMobile" className="max-w-[75%]" />
+          <button
+            type="button"
+            onClick={onMenuToggle}
+            className={`${ICON_HIT_MD} rounded-full bg-black/[0.05] text-gray-800 transition hover:bg-black/[0.08]`}
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
+            aria-expanded={menuOpen}
+          >
+            {menuOpen ? (
+              <svg className={ICON_SVG_MD} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            ) : (
+              <svg className={ICON_SVG_MD} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            )}
+          </button>
+        </div>
+
+        {/* Desktop: logo | search | utilities */}
+        <div className="hidden md:grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 lg:gap-8">
+          <SiteBrand variant="header" />
+
+          <div className="flex justify-center min-w-0 px-2 lg:px-6">
+            <SearchBar className="w-full max-w-md lg:max-w-xl" />
+          </div>
+
+          <UtilityIcons user={user} onLoginClick={onLoginClick} />
+        </div>
+      </div>
+
+      <div className="md:hidden bg-transparent px-4 pb-3">
+        <SearchBar className="w-full" />
+      </div>
+    </div>
+  );
+}
+
+export default Header;
