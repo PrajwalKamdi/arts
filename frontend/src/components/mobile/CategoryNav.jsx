@@ -42,7 +42,7 @@ function CategoryImage({ src, name }) {
     <img
       src={src}
       alt={name}
-      className="max-h-full max-w-full object-contain transition-transform duration-300 group-hover:scale-105"
+      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
       loading="lazy"
       onError={() => setFailed(true)}
     />
@@ -53,12 +53,12 @@ function CategoryCard({ category, className = "" }) {
   return (
     <Link
       to={`/product?categoryName=${encodeURIComponent(category.name)}`}
-      className={`group flex shrink-0 snap-start flex-col overflow-hidden rounded-xl bg-[#F5F0E6] transition-shadow hover:shadow-md ${className}`}
+      className={`group flex shrink-0 snap-start flex-col overflow-hidden rounded-xl border-0 bg-[#F5F0E6] p-0 shadow-none hover:border-0 hover:shadow-none ${className}`}
     >
-      <div className="flex h-32 w-full items-center justify-center overflow-hidden p-2 sm:h-40 sm:p-3 lg:h-44">
+      <div className="flex aspect-[3/2] w-full items-center justify-center overflow-hidden">
         <CategoryImage src={category.image} name={category.name} />
       </div>
-      <p className="line-clamp-2 px-2 pb-3 text-center text-xs font-bold uppercase leading-tight tracking-tight text-text-primary transition-colors duration-300 group-hover:text-[#5C4033] sm:px-2.5 sm:text-sm md:text-base">
+      <p className="line-clamp-2 p-0 text-center text-xs font-bold uppercase leading-tight tracking-tight text-text-primary transition-colors duration-300 group-hover:text-[#5C4033] sm:text-sm md:text-base">
         {category.name.replace(/&/g, " / ")}
       </p>
     </Link>
@@ -163,7 +163,7 @@ function CategoryNav() {
 
         <div
           ref={scrollRef}
-          className="hide-scrollbar flex snap-x snap-mandatory gap-2 overflow-x-auto scroll-smooth pb-2 sm:gap-2.5 lg:gap-2.5"
+          className="hide-scrollbar flex snap-x snap-mandatory gap-2 overflow-x-auto scroll-smooth p-0 sm:gap-2.5 lg:gap-2.5"
         >
           {sortedCategories.map((category) => (
             <CategoryCard

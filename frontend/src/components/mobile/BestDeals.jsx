@@ -43,7 +43,7 @@ function BestDeals() {
 
   return (
     <section className="store-section-pad bg-mobile-bg">
-      <SectionHeader title="Vape Deals & Offers" viewAllTo="/product" className="mb-2" />
+      <SectionHeader title="Deals & Offers" viewAllTo="/product" className="mb-2" />
 
       {loading ? (
         <HorizontalScrollRow>
