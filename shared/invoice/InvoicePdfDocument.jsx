@@ -103,7 +103,11 @@ function SummaryRow({ label, value, highlight = false }) {
 
 export default function InvoicePdfDocument({ order, customer, storeSettings, logoUrl }) {
   const config = mergeInvoiceConfig(storeSettings);
-  const headerLogo = logoUrl || INVOICE_LOGO_URL || LOGO_URL;
+  let rawLogo = logoUrl || INVOICE_LOGO_URL || LOGO_URL;
+  const headerLogo =
+    typeof window !== "undefined" && typeof rawLogo === "string" && rawLogo.startsWith("/")
+      ? `${window.location.origin}${rawLogo}`
+      : rawLogo;
   const orderNo = getOrderNumber(order);
   const invoiceNo = `INV-${orderNo}`;
   const addr = order?.deliveryAddress || {};

@@ -21,7 +21,7 @@ function Contact() {
   const handleSubmit = (e) => {
     e.preventDefault();
     alert(
-      "Thank you! Our sales team will contact you shortly with a bulk quote."
+      "Thank you! The Mukta Arts team will contact you shortly."
     );
     setForm({ name: "", business: "", phone: "", email: "", message: "" });
   };
@@ -36,8 +36,8 @@ function Contact() {
           <div>
             <h1 className="page-title">Contact Us</h1>
             <p className="text-text-secondary mb-8 leading-relaxed">
-              Tell us the brands, models, and quantity you need. We respond to
-              bulk enquiries within one business day.
+              Reach out to Mukta Arts for queries, custom designs, or orders of
+              handcrafted clay and ceramic creations. We are here to assist you.
             </p>
 
             <div className="space-y-6 text-text-secondary">

@@ -1,4 +1,6 @@
 import React from "react";
+import fs from "fs";
+import path from "path";
 import { Document, Image, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 import { amountInWords } from "../../shared/invoice/amountInWords.js";
 import {
@@ -118,7 +120,21 @@ function SummaryRow({ label, value, highlight = false }) {
 
 export default function InvoicePdfDocument({ order, customer, storeSettings, logoUrl }) {
   const config = mergeInvoiceConfig(storeSettings);
-  const headerLogo = logoUrl || INVOICE_LOGO_URL || LOGO_URL;
+  const rawLogo = logoUrl || INVOICE_LOGO_URL || LOGO_URL;
+  let headerLogo = rawLogo;
+  if (typeof rawLogo === "string" && rawLogo.startsWith("/")) {
+    const candidatePaths = [
+      path.resolve(process.cwd(), "frontend/public", rawLogo.replace(/^\//, "")),
+      path.resolve(process.cwd(), "../frontend/public", rawLogo.replace(/^\//, "")),
+      path.resolve(process.cwd(), "public", rawLogo.replace(/^\//, "")),
+    ];
+    for (const p of candidatePaths) {
+      if (fs.existsSync(p)) {
+        headerLogo = p;
+        break;
+      }
+    }
+  }
   const orderNo = getOrderNumber(order);
   const invoiceNo = `INV-${orderNo}`;
   const addr = order?.deliveryAddress || {};

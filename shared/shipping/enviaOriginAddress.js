@@ -1,7 +1,7 @@
 export const DEFAULT_ENVIA_PICKUP_ORIGIN = {
-  name: "Ashok Modi",
-  company: "VapeHub",
-  email: "bulkmobilemart@gmail.com",
+  name: "Mukta Arts",
+  company: "Mukta Arts",
+  email: "support@muktaarts.in",
   phone: "7400222232",
   addressLine1: "SHOP NO. 2155, 2ND FLOOR, Nathani Heights",
   addressLine2: "Commercial Arcade",

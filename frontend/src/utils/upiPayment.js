@@ -19,7 +19,7 @@ function sanitizeNote(note) {
 function resolveLegacyMerchantUpiConfig(config = {}) {
   const upiId = String(config.merchantUpiId || config.upiId || ENV_UPI_ID || "").trim();
   const upiName = String(
-    config.merchantUpiName || config.upiName || ENV_UPI_NAME || "VapeHub"
+    config.merchantUpiName || config.upiName || ENV_UPI_NAME || "Mukta Arts"
   ).trim();
 
   return { upiId, upiName };
@@ -28,7 +28,7 @@ function resolveLegacyMerchantUpiConfig(config = {}) {
 export function buildMerchantUpiConfig(account = {}) {
   return {
     upiId: String(account?.upiId || "").trim(),
-    upiName: String(account?.label || account?.upiName || "").trim() || "VapeHub",
+    upiName: String(account?.label || account?.upiName || "").trim() || "Mukta Arts",
   };
 }
 
@@ -37,7 +37,7 @@ export function pickEnabledMerchantUpiAccounts(config = {}) {
     ? config.merchantUpiAccounts
         .map((account) => ({
           upiId: String(account?.upiId || "").trim(),
-          label: String(account?.label || "").trim() || "VapeHub",
+          label: String(account?.label || "").trim() || "Mukta Arts",
           enabled: account?.enabled !== false,
         }))
         .filter((account) => account.upiId && account.enabled)

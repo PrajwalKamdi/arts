@@ -1,27 +1,25 @@
-export const LOGO_URL =
-  "https://res.cloudinary.com/dsafvwkrf/image/upload/v1780561447/Bulkmobilemart_logo_2-removebg-preview_wcso0k.png";
+export const LOGO_URL = "/assets/payment/Mukta-Photoroom.png";
 
 /** Compact logo for tax invoice header (matches PDF-style small branding) */
-export const INVOICE_LOGO_URL =
-  "https://res.cloudinary.com/dsafvwkrf/image/upload/w_220,h_56,c_limit,q_auto,f_auto/v1780561447/Bulkmobilemart_logo_2-removebg-preview_wcso0k.png";
+export const INVOICE_LOGO_URL = "/assets/payment/Mukta-Photoroom.png";
 
 export const INVOICE_CONFIG = {
-  companyName: "VapeHub",
-  legalEntity: "VapeHub",
-  tagline: "Your Trusted Mobile Accessories Wholesale Partner",
-  email: "bulkmobilemart@gmail.com",
-  supportEmail: "bulkmobilemart@gmail.com",
-  phone: "+91 74002 22233",
+  companyName: "Mukta Arts",
+  legalEntity: "Mukta Arts",
+  tagline: "Premium Clay & Ceramic Artworks, Cookware, and Home Decor",
+  email: "support@muktaarts.in",
+  supportEmail: "support@muktaarts.in",
+  phone: "+91 95452 35223",
   address: "Mumbai Central",
   gstNumber: "",
   stateCode: "27",
   stateName: "Maharashtra",
-  defaultHsn: "85171200",
+  defaultHsn: "691200",
   defaultGstRate: 18,
   bank: {
     name: "HDFC Bank",
     ifsc: "HDFC0000000",
-    accountName: "VapeHub",
+    accountName: "Mukta Arts",
     accountNumber: "",
     upiId: "",
   },

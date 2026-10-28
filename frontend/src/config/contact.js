@@ -1,9 +1,9 @@
 /** Primary business phone */
-export const CONTACT_PHONE_RAW = "7418964327";
-export const CONTACT_PHONE_DISPLAY = "+44 7418964327";
-export const CONTACT_PHONE_TEL = "tel:+447418964327";
+export const CONTACT_PHONE_RAW = "9545235223";
+export const CONTACT_PHONE_DISPLAY = "+91 95452 35223";
+export const CONTACT_PHONE_TEL = "tel:+919545235223";
 export const CONTACT_WHATSAPP_URL =
-  "https://wa.me/447418964327?text=Hi%2C%20I%20am%20interested%20in%20products%20from%20Mukta%20Arts.";
+  "https://wa.me/919545235223?text=Hi%2C%20I%20am%20interested%20in%20products%20from%20Mukta%20Arts.";
 
 export const CONTACT_LOCATION = "Mumbai";
 
@@ -32,7 +32,7 @@ export const SOCIAL_LINKS = [
     id: "whatsapp-catalog",
     label: "WhatsApp Catalog",
     description: "Browse our product catalog",
-    href: "https://wa.me/c/447418964327",
+    href: "https://wa.me/c/919545235223",
     platform: "whatsapp",
   },
   {

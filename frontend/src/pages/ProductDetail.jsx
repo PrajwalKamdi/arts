@@ -565,7 +565,7 @@ function ProductDetail() {
     });
 
     return () => {
-      document.title = "VapeHub";
+      document.title = "Mukta Arts";
     };
   }, [product, shareUrl, shareImageUrl, activeVariantName]);
 

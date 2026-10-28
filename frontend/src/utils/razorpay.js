@@ -1,3 +1,5 @@
+import { SITE_NAME } from "../config/site";
+
 export function loadRazorpayScript() {
   return new Promise((resolve) => {
     if (typeof window === "undefined") {
@@ -31,7 +33,7 @@ export function openRazorpayCheckout({
     key: keyId,
     amount,
     currency: "INR",
-    name: "VapeHub",
+    name: SITE_NAME,
     description,
     order_id: razorpayOrderId,
     prefill: {

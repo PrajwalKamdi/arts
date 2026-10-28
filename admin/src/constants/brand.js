@@ -1,7 +1,6 @@
-export const SITE_NAME = "VapeHub";
+export const SITE_NAME = "Mukta Arts";
 
-export const LOGO_URL =
-  "https://res.cloudinary.com/dsafvwkrf/image/upload/v1780561447/Bulkmobilemart_logo_2-removebg-preview_wcso0k.png";
+export const LOGO_URL = "/assets/payment/Mukta-Photoroom.png";
 
 export const STORE_URL =
   import.meta.env.VITE_STORE_URL || "https://www.vapeavenue.co.uk/";

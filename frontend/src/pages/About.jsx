@@ -3,12 +3,11 @@ function About() {
     <div className="info-page legal-page">
       <section className="page-hero-section">
         <div className="max-w-7xl mx-auto">
-          <h1 className="page-title">About VapeHub</h1>
+          <h1 className="page-title">About Mukta Arts</h1>
           <p className="text-text-secondary text-lg max-w-3xl leading-relaxed">
-            VapeHub was built for businesses that sell vapes — not
-            end-customers shopping one phone at a time. We connect retailers,
-            online marketplace sellers, and regional distributors with genuine
-            wholesale stock at prices that protect your margins.
+            Mukta Arts is dedicated to the timeless beauty of handcrafted clay and ceramic creations.
+            We bring you authentic, artisan-made cookware, elegant home decor, and unique artistic
+            pieces that enrich your everyday living and culinary experiences.
           </p>
         </div>
       </section>
@@ -18,18 +17,18 @@ function About() {
           <div className="rounded-2xl border border-border-light bg-white p-8 shadow-sm">
             <h2 className="text-xl font-bold text-text-primary mb-3">Our Mission</h2>
             <p className="text-text-secondary leading-relaxed">
-              Make bulk smartphone sourcing simple, transparent, and reliable for
-              every serious seller in India — with honest pricing, proper
-              documentation, and support you can reach on a phone call.
+              Preserve traditional pottery artistry and bring premium handcrafted clay and ceramic
+              artworks directly to modern homes and businesses across India — with authentic craftsmanship,
+              safe packaging, and honest customer service.
             </p>
           </div>
           <div className="rounded-2xl border border-border-light bg-white p-8 shadow-sm">
             <h2 className="text-xl font-bold text-text-primary mb-3">Who We Serve</h2>
             <ul className="text-text-secondary space-y-2">
-              <li>· Mobile retail shops & multi-brand stores</li>
-              <li>· Amazon / Flipkart / Meesho resellers</li>
-              <li>· Corporate gifting & bulk procurement</li>
-              <li>· Regional distributors & sub-dealers</li>
+              <li>· Art lovers, collectors & home decor enthusiasts</li>
+              <li>· Restaurants, cafes & traditional cookware kitchens</li>
+              <li>· Corporate gifting & festive bulk orders</li>
+              <li>· Retailers, boutiques & online partners</li>
             </ul>
           </div>
         </div>
@@ -40,12 +39,12 @@ function About() {
           <h2 className="text-2xl font-bold text-text-primary mb-6">What We Offer</h2>
           <ul className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 text-text-secondary">
             {[
-              "Latest smartphones — all major brands",
-              "Mix-and-match bulk orders",
-              "GST-compliant invoices",
-              "IMEI-verified genuine units",
-              "Warehouse pickup & courier delivery",
-              "Repeat-order loyalty pricing",
+              "Handcrafted clay & ceramic cookware",
+              "Artistic home decor & pottery showpieces",
+              "Custom & bulk order fulfillment",
+              "Safe protective packaging for transit",
+              "Pan-India courier & express delivery",
+              "Direct support & personalized service",
             ].map((item) => (
               <li
                 key={item}
