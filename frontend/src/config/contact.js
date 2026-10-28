@@ -3,7 +3,7 @@ export const CONTACT_PHONE_RAW = "7418964327";
 export const CONTACT_PHONE_DISPLAY = "+44 7418964327";
 export const CONTACT_PHONE_TEL = "tel:+447418964327";
 export const CONTACT_WHATSAPP_URL =
-  "https://wa.me/447418964327?text=Hi%2C%20I%20am%20interested%20in%20bulk%20mobile%20accessories%20from%20Bulk%20Mobile%20Mart.";
+  "https://wa.me/447418964327?text=Hi%2C%20I%20am%20interested%20in%20products%20from%20Mukta%20Arts.";
 
 export const CONTACT_LOCATION = "Mumbai";
 
@@ -34,13 +34,6 @@ export const SOCIAL_LINKS = [
     description: "Browse our product catalog",
     href: "https://wa.me/c/447418964327",
     platform: "whatsapp",
-  },
-  {
-    id: "instagram",
-    label: "Instagram",
-    description: "@bulkmobilemart.in",
-    href: "https://www.instagram.com/bulkmobilemart.in?igsh=YjlwcjZzamdpYXdp&utm_source=qr",
-    platform: "instagram",
   },
   {
     id: "facebook",
