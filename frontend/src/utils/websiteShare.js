@@ -75,13 +75,13 @@ export async function getShareableWebsiteFile() {
     const localResponse = await fetch(SITE_LAUNCHER_URL).catch(() => null);
     if (!localResponse?.ok) return null;
     const localBlob = await localResponse.blob();
-    return new File([localBlob], "vapehub-logo.png", {
+    return new File([localBlob], "mukta-arts-logo.png", {
       type: localBlob.type?.startsWith("image/") ? localBlob.type : "image/png",
     });
   }
 
   const ext = getImageExtension(SITE_SHARE_IMAGE_URL);
-  return new File([blob], `vapehub-logo.${ext}`, {
+  return new File([blob], `mukta-arts-logo.${ext}`, {
     type: blob.type?.startsWith("image/") ? blob.type : getMimeType(ext),
   });
 }

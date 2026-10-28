@@ -1,4 +1,5 @@
 import { buildApiUrl } from "../api/api";
+import { SITE_NAME } from "../config/site";
 import {
   getDisplayPrice,
   getProductListPriceInfo,
@@ -104,9 +105,9 @@ export function buildProductShareContent({
   }
 
   if (includeUrl && shareUrl) {
-    lines.push(`🛒 Shop on VapeHub:\n${shareUrl}`);
+    lines.push(`🛒 Shop on ${SITE_NAME}:\n${shareUrl}`);
   } else {
-    lines.push("🛒 Shop on VapeHub");
+    lines.push(`🛒 Shop on ${SITE_NAME}`);
   }
 
   return {
@@ -295,12 +296,12 @@ export function updateProductShareMeta({ product, shareUrl, imageUrl, variantNam
     includeUrl: false,
   });
 
-  document.title = `${productName} | VapeHub`;
+  document.title = `${productName} | ${SITE_NAME}`;
 
   const descriptionParts = [];
   if (brandName) descriptionParts.push(brandName);
   if (priceLabel) descriptionParts.push(priceLabel);
-  descriptionParts.push("Wholesale on VapeHub");
+  descriptionParts.push(`Buy on ${SITE_NAME}`);
   const description = descriptionParts.join(" · ");
 
   upsertMetaTag("property", "og:title", productName);
