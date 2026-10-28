@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useCategoriesQuery } from "../../hooks/queries/useCategoriesQuery";
 
@@ -32,7 +32,7 @@ function CategoryImage({ src, name }) {
 
   if (!isUsableCategoryImage(src) || failed) {
     return (
-      <span className="flex h-full w-full items-center justify-center rounded-lg bg-neutral-100 text-lg font-bold uppercase text-neutral-400 transition-transform duration-300 ease-out group-hover:scale-110 sm:text-2xl lg:text-4xl">
+      <span className="flex h-full w-full items-center justify-center rounded-lg bg-neutral-100 text-lg font-bold uppercase text-neutral-400 transition-transform duration-300 ease-out group-hover:scale-105 sm:text-2xl lg:text-3xl">
         {(name || "?").charAt(0)}
       </span>
     );
@@ -42,7 +42,7 @@ function CategoryImage({ src, name }) {
     <img
       src={src}
       alt={name}
-      className="max-h-full max-w-full object-contain  rounded-t-2xl"
+      className="max-h-full max-w-full object-contain transition-transform duration-300 group-hover:scale-105"
       loading="lazy"
       onError={() => setFailed(true)}
     />
@@ -53,38 +53,43 @@ function CategoryCard({ category, className = "" }) {
   return (
     <Link
       to={`/product?categoryName=${encodeURIComponent(category.name)}`}
-      className={`group flex min-h-[168px] flex-col overflow-hidden rounded-xl bg-[#F5F0E6] transition-colors sm:min-h-[192px] lg:min-h-[200px] ${className}`}
+      className={`group flex shrink-0 snap-start flex-col overflow-hidden rounded-xl bg-[#F5F0E6] transition-shadow hover:shadow-md ${className}`}
     >
-      <div className="flex flex-1 items-center justify-center overflow-hidden px-0.5 pt-2 sm:px-1 sm:pt-3 lg:px-1 lg:pt-3 lg:pb-1">
-        <div className="flex items-center justify-center">
-          <CategoryImage src={category.image} name={category.name} />
-        </div>
+      <div className="flex h-32 w-full items-center justify-center overflow-hidden p-2 sm:h-40 sm:p-3 lg:h-44">
+        <CategoryImage src={category.image} name={category.name} />
       </div>
-      <p className="line-clamp-2 px-1 pb-2 text-center text-xs font-extrabold uppercase leading-tight tracking-tight text-text-primary transition-colors duration-300 group-hover:text-[#5C4033] sm:px-1.5 sm:pb-2.5 sm:text-sm md:text-base lg:leading-snug">
+      <p className="line-clamp-2 px-2 pb-3 text-center text-xs font-bold uppercase leading-tight tracking-tight text-text-primary transition-colors duration-300 group-hover:text-[#5C4033] sm:px-2.5 sm:text-sm md:text-base">
         {category.name.replace(/&/g, " / ")}
       </p>
     </Link>
   );
 }
 
-function CategoryFlexGrid({ categories }) {
-  if (categories.length === 0) return null;
-
+function NavArrowButton({ direction, onClick, label, disabled }) {
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 justify-center gap-2 sm:gap-3">
-      {categories.map((category) => (
-        <CategoryCard
-          key={category.name}
-          category={category}
-          className=""
-        />
-      ))}
-    </div>
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#3E3429]/20 bg-white/90 text-[#3E3429] shadow-sm transition hover:bg-[#3E3429] hover:text-white disabled:pointer-events-none disabled:opacity-30 lg:flex"
+    >
+      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+        {direction === "left" ? (
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+        ) : (
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+        )}
+      </svg>
+    </button>
   );
 }
 
 function CategoryNav() {
   const { data: apiCategories = [] } = useCategoriesQuery();
+  const scrollRef = useRef(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
 
   const categories = useMemo(() => {
     const filtered = apiCategories.filter(
@@ -99,6 +104,33 @@ function CategoryNav() {
 
   const sortedCategories = useMemo(() => sortCategories(categories), [categories]);
 
+  const checkScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 5);
+    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 5);
+  }, []);
+
+  useEffect(() => {
+    checkScroll();
+    const el = scrollRef.current;
+    if (!el) return;
+    el.addEventListener("scroll", checkScroll, { passive: true });
+    window.addEventListener("resize", checkScroll);
+    return () => {
+      el.removeEventListener("scroll", checkScroll);
+      window.removeEventListener("resize", checkScroll);
+    };
+  }, [checkScroll, sortedCategories]);
+
+  const scrollBy = (direction) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const card = el.firstElementChild;
+    const scrollAmount = card ? card.clientWidth + 10 : 300;
+    el.scrollBy({ left: direction * scrollAmount, behavior: "smooth" });
+  };
+
   if (sortedCategories.length === 0) {
     return null;
   }
@@ -106,13 +138,41 @@ function CategoryNav() {
   return (
     <section className="store-section-pad bg-mobile-bg">
       <div className="mx-auto max-w-[1600px]">
-        <div className="mb-4 py-0 text-center sm:mb-5 lg:mb-6">
-          <h2 className="text-2xl font-bold text-text-primary sm:text-3xl lg:text-4xl">
-            Shop By Your Choice
+        <div className="mb-4 flex items-center justify-between sm:mb-5 lg:mb-6">
+          <h2 className="text-xl font-bold text-text-primary sm:text-2xl lg:text-3xl">
+            Shop By Category
           </h2>
+
+          {sortedCategories.length > 4 && (
+            <div className="hidden items-center gap-2 lg:flex">
+              <NavArrowButton
+                direction="left"
+                onClick={() => scrollBy(-1)}
+                disabled={!canScrollLeft}
+                label="Previous categories"
+              />
+              <NavArrowButton
+                direction="right"
+                onClick={() => scrollBy(1)}
+                disabled={!canScrollRight}
+                label="Next categories"
+              />
+            </div>
+          )}
         </div>
 
-        <CategoryFlexGrid categories={sortedCategories} />
+        <div
+          ref={scrollRef}
+          className="hide-scrollbar flex snap-x snap-mandatory gap-2 overflow-x-auto scroll-smooth pb-2 sm:gap-2.5 lg:gap-2.5"
+        >
+          {sortedCategories.map((category) => (
+            <CategoryCard
+              key={category.name}
+              category={category}
+              className="w-[calc((100%-0.5rem)/1.5)] min-w-[calc((100%-0.5rem)/1.5)] max-w-[calc((100%-0.5rem)/1.5)] sm:w-[calc((100%-1rem)/2.5)] sm:min-w-[calc((100%-1rem)/2.5)] sm:max-w-[calc((100%-1rem)/2.5)] lg:w-[calc((100%-1.875rem)/4)] lg:min-w-[calc((100%-1.875rem)/4)] lg:max-w-[calc((100%-1.875rem)/4)]"
+            />
+          ))}
+        </div>
       </div>
     </section>
   );
