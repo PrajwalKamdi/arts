@@ -1,4 +1,5 @@
 import HeroBanner from "../components/mobile/HeroBanner";
+import PromoMessageStrip from "../components/home/PromoMessageStrip";
 import CategoryNav from "../components/mobile/CategoryNav";
 import JustArrived from "../components/home/JustArrived";
 import HotSelling from "../components/home/HotSelling";
@@ -12,6 +13,7 @@ function Home() {
   return (
     <div className="bg-mobile-bg store-page-stack">
       <HeroBanner />
+      <PromoMessageStrip />
       <CategoryNav />
       <BestDeals />
       <div className="flex flex-col gap-3 sm:gap-4 lg:gap-5">

@@ -554,3 +554,29 @@ input[type="number"] {
     animation: none;
   }
 }
+
+@keyframes promo-ticker {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.promo-ticker-track {
+  display: flex;
+  width: max-content;
+  animation: promo-ticker 30s linear infinite;
+  will-change: transform;
+}
+
+.promo-ticker-track:hover {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .promo-ticker-track {
+    animation: none;
+  }
+}
