@@ -59,12 +59,29 @@ function MobileHeader() {
     <>
       <header
         ref={headerRef}
-        className="fixed top-0 left-0 right-0 z-50 overflow-visible border-b border-black/[0.06] bg-[#F5F0E6]/90 px-4 pb-3 pt-[max(0.625rem,env(safe-area-inset-top))] backdrop-blur-xl sm:px-5 lg:hidden"
+        className="fixed top-0 left-0 right-0 z-50 overflow-visible border-b border-black/[0.06] bg-white px-4 pb-1.5 pt-[max(0.375rem,env(safe-area-inset-top))] sm:px-5 lg:hidden"
       >
-        <div className="flex items-center justify-between gap-3">
-          <SiteBrand variant="headerMobile" />
+        <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center">
+          <div className="flex items-center justify-self-start">
+            <button
+              type="button"
+              onClick={openMenu}
+              className={`${ICON_HIT_MD} rounded-full bg-black/[0.05] text-neutral-900 transition hover:bg-black/[0.08]`}
+              aria-label="Open menu"
+            >
+              <svg className={ICON_SVG_MD} fill="currentColor" viewBox="0 0 24 24">
+                <circle cx="12" cy="5" r="1.75" />
+                <circle cx="12" cy="12" r="1.75" />
+                <circle cx="12" cy="19" r="1.75" />
+              </svg>
+            </button>
+          </div>
 
-          <div className="flex shrink-0 items-center gap-1.5 overflow-visible">
+          <div className="flex w-28 items-center justify-center sm:w-40">
+            <SiteBrand variant="headerMobile" className="w-full! h-auto!" />
+          </div>
+
+          <div className="flex items-center justify-self-end gap-1.5 overflow-visible">
             <button
               type="button"
               onClick={toggleSearch}
@@ -98,19 +115,6 @@ function MobileHeader() {
                 </svg>
               </NavIconWrap>
             </Link>
-
-            <button
-              type="button"
-              onClick={openMenu}
-              className={`${ICON_HIT_MD} rounded-full bg-black/[0.05] text-neutral-900 transition hover:bg-black/[0.08]`}
-              aria-label="Open menu"
-            >
-              <svg className={ICON_SVG_MD} fill="currentColor" viewBox="0 0 24 24">
-                <circle cx="12" cy="5" r="1.75" />
-                <circle cx="12" cy="12" r="1.75" />
-                <circle cx="12" cy="19" r="1.75" />
-              </svg>
-            </button>
           </div>
         </div>
 

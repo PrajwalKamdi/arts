@@ -1,3 +1,4 @@
+import { useId, useState } from "react";
 import { Link } from "react-router-dom";
 import { SiteBrand } from "../layout/SiteBrand";
 import { useAuth } from "../../context/AuthContext";
@@ -5,19 +6,20 @@ import { useCart } from "../../context/CartContext";
 import { useWishlist } from "../../context/WishlistContext";
 import UserAccountDropdown from "../account/UserAccountDropdown";
 import DesktopSearchBar from "./DesktopSearchBar";
+import MobileMenuDrawer from "./MobileMenuDrawer";
+import { useCategoriesQuery } from "../../hooks/queries/useCategoriesQuery";
 import { NavIconWrap } from "./NavIconWrap";
 import { ICON_HIT_MD, ICON_SVG_LG, WISHLIST_ICON_COLOR } from "../../utils/iconLayout";
 
-import { formatPrice } from "../../utils/currency";
-
 function TopNav() {
   const { user, openAuthModal } = useAuth();
-  const { items, cartCount } = useCart();
+  const { cartCount } = useCart();
   const { wishlistCount } = useWishlist();
-
-  const cartTotal = items.reduce(
-    (sum, item) => sum + item.discountedPrice * item.quantity,
-    0
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuId = useId();
+  const { data: allCategories = [] } = useCategoriesQuery();
+  const categories = allCategories.filter(
+    (category) => category.categoryName?.toLowerCase() !== "most purchase"
   );
 
   const handleWishlistClick = (e) => {
@@ -35,15 +37,31 @@ function TopNav() {
   };
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 hidden border-b border-black/[0.06] bg-[#F5F0E6]/90 backdrop-blur-xl lg:block">
-      <div className="mx-auto flex max-w-[1600px] items-center gap-4 px-5 py-3.5 xl:gap-6 xl:px-8">
-        <div className="flex shrink-0 items-center">
+    <>
+    <header className="fixed top-0 left-0 right-0 z-50 hidden border-b border-black/[0.06] bg-white lg:block">
+      <div className="mx-auto grid max-w-[1600px] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4 px-5 py-2 xl:gap-6 xl:px-8">
+        <div className="flex min-w-0 items-center gap-6 xl:gap-8">
+          <button
+            type="button"
+            onClick={() => setMenuOpen(true)}
+            aria-expanded={menuOpen}
+            aria-controls={menuId}
+            aria-haspopup="dialog"
+            className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-text-primary transition hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
+          >
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+              <path strokeLinecap="round" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+            <span>Menu</span>
+          </button>
+          <DesktopSearchBar className="min-w-0" />
+        </div>
+
+        <div className="flex items-center justify-center">
           <SiteBrand variant="header" />
         </div>
 
-        <DesktopSearchBar className="mx-2 min-w-0 flex-1 xl:mx-4" />
-
-        <div className="flex shrink-0 items-center gap-1.5 overflow-visible xl:gap-2">
+        <div className="flex items-center justify-self-end gap-1.5 overflow-visible xl:gap-2">
           {user ? (
             <UserAccountDropdown user={user} />
           ) : (
@@ -85,8 +103,8 @@ function TopNav() {
             to="/cart"
             data-cart-target="desktop"
             onClick={handleCartClick}
-            className="relative flex h-10 items-center gap-1.5 overflow-visible rounded-full bg-black/[0.04] px-3 text-text-primary transition hover:bg-black/[0.07]"
-            aria-label={`Cart, ${cartCount} items, ${formatPrice(cartTotal)}`}
+            className={`${ICON_HIT_MD} relative rounded-full bg-black/[0.04] text-text-primary transition hover:bg-black/[0.07]`}
+            aria-label={`Cart, ${cartCount} items`}
           >
             <NavIconWrap badge={cartCount}>
               <svg className={ICON_SVG_LG} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -97,11 +115,20 @@ function TopNav() {
                 />
               </svg>
             </NavIconWrap>
-            <span className="text-sm font-bold leading-none">{formatPrice(cartTotal)}</span>
           </Link>
         </div>
       </div>
     </header>
+    {menuOpen && (
+      <MobileMenuDrawer
+        id={menuId}
+        desktop
+        open={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        categories={categories}
+      />
+    )}
+    </>
   );
 }
 

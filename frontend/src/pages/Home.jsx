@@ -4,14 +4,13 @@ import CategoryNav from "../components/mobile/CategoryNav";
 import JustArrived from "../components/home/JustArrived";
 import HotSelling from "../components/home/HotSelling";
 import RecentlyViewed from "../components/home/RecentlyViewed";
-import WhatsRightForYouSection from "../components/mobile/WhatsRightForYouSection";
 import BestDeals from "../components/mobile/BestDeals";
 import PromoBanner from "../components/mobile/PromoBanner";
 import TestimonialsImpact from "../components/home/TestimonialsImpact";
 
 function Home() {
   return (
-    <div className="bg-mobile-bg store-page-stack">
+    <div className="bg-mobile-bg flex flex-col gap-3 sm:gap-4 lg:gap-5">
       <div>
         <HeroBanner />
         <PromoMessageStrip />
@@ -23,7 +22,6 @@ function Home() {
         <HotSelling />
         <RecentlyViewed />
       </div>
-      <WhatsRightForYouSection />
       <PromoBanner />
       <TestimonialsImpact />
     </div>

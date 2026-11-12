@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useBrandsQuery } from "../../hooks/queries/useBrandsQuery";
@@ -140,16 +140,22 @@ function MobileDrawerFilters({ categories }) {
   );
 }
 
-function MobileMenuDrawer({ open, onClose, categories }) {
+function MobileMenuDrawer({ open, onClose, categories, desktop = false, id }) {
+  const drawerRef = useRef(null);
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { user, openAuthModal, logout } = useAuth();
   const isProductPage = pathname === "/product";
 
   useEffect(() => {
-    document.body.style.overflow = open ? "hidden" : "";
+    if (!open) return;
+    const previousOverflow = document.body.style.overflow;
+    const previousFocus = document.activeElement;
+    document.body.style.overflow = "hidden";
+    drawerRef.current?.querySelector("aside button")?.focus();
     return () => {
-      document.body.style.overflow = "";
+      document.body.style.overflow = previousOverflow;
+      previousFocus?.focus();
     };
   }, [open]);
 
@@ -182,15 +188,44 @@ function MobileMenuDrawer({ open, onClose, categories }) {
   };
 
   return (
-    <div className="fixed inset-0 z-[60] lg:hidden" role="dialog" aria-modal="true" aria-label="Menu">
+    <div
+      ref={drawerRef}
+      id={id}
+      className={`fixed inset-0 z-[60] ${desktop ? "" : "lg:hidden"}`}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Menu"
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          onClose();
+        }
+        if (event.key === "Tab") {
+          const controls = drawerRef.current?.querySelectorAll(
+            'aside a[href], aside button:not([disabled]), aside input:not([disabled]), aside select:not([disabled])'
+          );
+          if (!controls?.length) return;
+          const first = controls[0];
+          const last = controls[controls.length - 1];
+          if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last.focus();
+          } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first.focus();
+          }
+        }
+      }}
+    >
       <button
         type="button"
         className="absolute inset-0 bg-black/40"
         onClick={onClose}
         aria-label="Close menu"
+        tabIndex={-1}
       />
 
-      <aside className="absolute right-0 top-0 flex h-full w-[min(300px,88vw)] flex-col bg-white shadow-xl">
+      <aside className={`absolute top-0 flex h-full flex-col bg-white shadow-xl ${desktop ? "left-0 w-[min(380px,88vw)]" : "right-0 w-[min(300px,88vw)]"}`}>
         <div className="flex items-center justify-between border-b border-border-light px-4 py-4">
           <div className="min-w-0">
             {user ? (

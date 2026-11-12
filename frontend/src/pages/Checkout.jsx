@@ -9,7 +9,10 @@ import {
   getStoreSettings,
   placeOrder,
   validateCoupon,
+  createRazorpayOrder,
+  verifyRazorpayPayment,
 } from "../api/api";
+import { loadRazorpayScript, openRazorpayCheckout } from "../utils/razorpay";
 import AddressForm, { ADDRESS_FORM_FIELDS } from "../components/address/AddressForm";
 import {
   clearBuyNowCheckout,
@@ -143,6 +146,9 @@ function Checkout() {
   const [savingAddress, setSavingAddress] = useState(false);
   const [formError, setFormError] = useState("");
   const [placingOrder, setPlacingOrder] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState("cod");
+  const [pendingPayment, setPendingPayment] = useState(null);
+  const paymentInProgressRef = useRef(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [orderError, setOrderError] = useState("");
@@ -268,6 +274,8 @@ function Checkout() {
       !bootstrapping &&
       !cartLoading &&
       checkoutItems.length === 0 &&
+      !placingOrder &&
+      !pendingPayment &&
       !orderPlaced
     ) {
       navigate(isBuyNow ? "/product" : "/cart", { replace: true });
@@ -280,6 +288,8 @@ function Checkout() {
     checkoutItems.length,
     navigate,
     orderPlaced,
+    placingOrder,
+    pendingPayment,
     isBuyNow,
   ]);
 
@@ -394,31 +404,62 @@ function Checkout() {
   };
 
   const handlePlaceOrder = async () => {
-    if (!selectedAddressId || placingOrder) return;
+    if (!selectedAddressId || paymentInProgressRef.current) return;
+    paymentInProgressRef.current = true;
     setOrderError("");
     setPlacingOrder(true);
-    await loadCart();
     try {
-      const { data } = await placeOrder({
+      const payload = {
         addressId: selectedAddressId,
-        paymentMethod: "cod",
         customerMessage: safeTrim(messageRef.current),
         checkoutMode: isBuyNow ? "buyNow" : "cart",
         buyNow: isBuyNow,
         checkoutItems: checkoutItemsPayload,
         couponCode: appliedCouponRef.current?.code || undefined,
         orderSource: "website",
-      });
+      };
+
+      if (paymentMethod === "online" || pendingPayment) {
+        let verificationPayload = pendingPayment;
+        if (!verificationPayload) {
+          if (!(await loadRazorpayScript())) {
+            throw new Error("Could not load online payments. Check your connection and try again.");
+          }
+          const { data: paymentOrder } = await createRazorpayOrder({
+            ...payload,
+            paymentMode: "online",
+          });
+          const paymentDetails = await new Promise((resolve, reject) => {
+            openRazorpayCheckout({
+              ...paymentOrder.data,
+              user,
+              description: "Mukta Arts order payment",
+              onSuccess: resolve,
+              onDismiss: () => reject(new Error("Payment cancelled. Your cart is saved; you can try again.")),
+            });
+          });
+          verificationPayload = { ...payload, ...paymentDetails, paymentMode: "online" };
+          setPendingPayment(verificationPayload);
+        }
+
+        const { data } = await verifyRazorpayPayment(verificationPayload);
+        await completeOrderSuccess("Payment received. Your order has been placed.", data.data);
+        setPendingPayment(null);
+        return;
+      }
+
+      const { data } = await placeOrder({ ...payload, paymentMethod: "cod" });
       await completeOrderSuccess(
         "Your order has been placed. Pay on delivery.",
         data.data
       );
     } catch (err) {
       if (!(await handleUnavailableCartItems(err))) {
-        setOrderError(err.response?.data?.message || "Failed to place order. Please try again.");
+        setOrderError(err.response?.data?.message || err.message || "Failed to place order. Please try again.");
       }
     } finally {
       setPlacingOrder(false);
+      paymentInProgressRef.current = false;
     }
   };
 
@@ -675,6 +716,31 @@ function Checkout() {
                   )}
                 </StepSection>
 
+                <StepSection title="Payment Method">
+                  <fieldset disabled={placingOrder || Boolean(pendingPayment)} className="space-y-3 disabled:opacity-60">
+                    <legend className="sr-only">Choose a payment method</legend>
+                    {[
+                      { value: "cod", title: "Cash on Delivery", detail: "Pay when your order arrives." },
+                      { value: "online", title: "Pay Online", detail: "UPI, cards, net banking and wallets via Razorpay." },
+                    ].map((method) => (
+                      <label key={method.value} className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition ${paymentMethod === method.value ? "border-primary bg-primary/5" : "border-border-light hover:border-primary/40"}`}>
+                        <input
+                          type="radio"
+                          name="paymentMethod"
+                          value={method.value}
+                          checked={paymentMethod === method.value}
+                          onChange={() => { setPaymentMethod(method.value); setOrderError(""); }}
+                          className="mt-0.5 h-4 w-4 accent-primary"
+                        />
+                        <span>
+                          <span className="block text-sm font-semibold text-text-primary">{method.title}</span>
+                          <span className="mt-1 block text-xs text-text-secondary">{method.detail}</span>
+                        </span>
+                      </label>
+                    ))}
+                  </fieldset>
+                </StepSection>
+
                 <StepSection title="Order Notes (Optional)">
                   <div className="relative">
                     <textarea
@@ -812,7 +878,7 @@ function Checkout() {
                   </div>
                   <div className="flex justify-between text-text-secondary">
                     <span>Payment</span>
-                    <span className="font-medium text-text-primary">Cash on Delivery</span>
+                    <span className="font-medium text-text-primary">{paymentMethod === "online" ? "Online via Razorpay" : "Cash on Delivery"}</span>
                   </div>
                 </div>
 
@@ -830,8 +896,13 @@ function Checkout() {
                   You will save {formatPrice(savings)} on this order
                 </div>
 
+                {pendingPayment && !placingOrder && (
+                  <p role="status" className="mt-4 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                    Your payment was submitted. Retry confirmation below without paying again. If the issue persists, contact support with payment ID {pendingPayment.razorpay_payment_id}.
+                  </p>
+                )}
                 {orderError && (
-                  <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-center text-xs text-red-600">
+                  <p role="alert" className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-center text-xs text-red-600">
                     {orderError}
                   </p>
                 )}
@@ -849,7 +920,7 @@ function Checkout() {
                       d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0V10.5M4.5 10.5h15v8.25a1.5 1.5 0 01-1.5 1.5h-12a1.5 1.5 0 01-1.5-1.5V10.5z"
                     />
                   </svg>
-                  {placingOrder ? "Please wait..." : "Place Order"}
+                  {placingOrder ? "Please wait..." : pendingPayment ? "Retry Payment Confirmation" : paymentMethod === "online" ? `Pay ${formatPrice(orderTotal, 2)}` : "Place Order"}
                 </button>
 
               </div>

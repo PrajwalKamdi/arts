@@ -10,8 +10,8 @@ export const ICON_HIT_MD =
   "flex h-10 w-10 shrink-0 items-center justify-center overflow-visible";
 
 /** Heart / wishlist icons across nav, profile, and product cards. */
-export const WISHLIST_ICON_COLOR = "text-red-600";
-export const WISHLIST_ICON_CIRCLE = "bg-red-50 text-red-600";
+export const WISHLIST_ICON_COLOR = "text-black";
+export const WISHLIST_ICON_CIRCLE = "bg-neutral-100 text-black";
 
 export function iconCountBadgeClass(compact = false) {
   return `pointer-events-none absolute z-10 flex items-center justify-center rounded-full bg-primary font-bold leading-none text-white ring-2 ring-white ${

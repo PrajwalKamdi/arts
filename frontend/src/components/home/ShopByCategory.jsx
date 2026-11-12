@@ -26,10 +26,11 @@ function ShopByCategory() {
             {[...Array(6)].map((_, index) => (
               <div
                 key={index}
-                className="rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-3 sm:px-3 sm:py-4 animate-pulse"
+                className="aspect-square flex min-w-0 flex-col overflow-hidden rounded-xl border border-neutral-800 bg-neutral-900 p-3 sm:p-4 motion-safe:animate-pulse"
               >
-                <div className="h-20 sm:h-24 md:h-28 w-full rounded-md bg-neutral-800 mb-2 sm:mb-3" />
-                <div className="h-3 w-3/4 mx-auto rounded bg-neutral-800" />
+                <div className="min-h-0 flex-1 rounded-lg bg-neutral-800" />
+                <div className="mt-3 h-3 w-3/4 mx-auto rounded bg-neutral-800" />
+                <div className="mt-2 h-2 w-1/3 mx-auto rounded bg-neutral-800" />
               </div>
             ))}
           </div>
@@ -43,20 +44,20 @@ function ShopByCategory() {
               <Link
                 key={item._id}
                 to="/product"
-                className="group flex flex-col items-center rounded-lg border border-neutral-700 bg-black px-2 py-3 sm:px-3 sm:py-4 hover:border-accent/50 hover:shadow-md transition-all"
+                className="group aspect-square flex min-w-0 flex-col overflow-hidden rounded-xl border border-neutral-800 bg-neutral-950 p-3 sm:p-4 hover:border-accent/60 hover:bg-neutral-900 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent transition-colors duration-200"
               >
-                <div className="flex h-20 sm:h-24 md:h-28 w-full items-center justify-center mb-2 sm:mb-3 overflow-hidden rounded-md bg-neutral-900">
+                <div className="flex min-h-0 w-full flex-1 items-center justify-center overflow-hidden rounded-lg bg-neutral-900">
                   <img
                     src={item.categoryImage}
                     alt={item.categoryName}
-                    className="max-h-full max-w-full object-contain p-1 group-hover:scale-105 transition-transform duration-300"
+                    className="h-full w-full object-contain p-2 sm:p-3 motion-safe:group-hover:scale-105 motion-safe:transition-transform duration-300"
                     loading="lazy"
                   />
                 </div>
-                <p className="text-center text-xs sm:text-sm md:text-base font-bold text-white leading-snug px-1 group-hover:text-[#5C4033] transition-colors duration-300">
+                <p className="mt-3 line-clamp-2 shrink-0 text-center text-xs sm:text-sm font-bold text-white leading-snug group-hover:text-accent transition-colors duration-200">
                   {item.categoryName}
                 </p>
-                <p className="mt-1 text-center text-[10px] sm:text-[11px] text-neutral-400">
+                <p className="mt-1 shrink-0 text-center text-[10px] sm:text-[11px] text-neutral-400">
                   {Number(item.productCount) || 0} products
                 </p>
               </Link>

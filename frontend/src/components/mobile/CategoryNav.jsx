@@ -32,7 +32,7 @@ function CategoryImage({ src, name }) {
 
   if (!isUsableCategoryImage(src) || failed) {
     return (
-      <span className="flex h-full w-full items-center justify-center rounded-lg bg-neutral-100 text-lg font-bold uppercase text-neutral-400 transition-transform duration-300 ease-out group-hover:scale-105 sm:text-2xl lg:text-3xl">
+      <span className="flex h-full w-full items-center justify-center rounded-lg bg-neutral-100 text-lg font-bold uppercase text-neutral-400 sm:text-2xl lg:text-3xl">
         {(name || "?").charAt(0)}
       </span>
     );
@@ -42,7 +42,7 @@ function CategoryImage({ src, name }) {
     <img
       src={src}
       alt={name}
-      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+      className="h-full w-full object-contain"
       loading="lazy"
       onError={() => setFailed(true)}
     />
@@ -55,10 +55,10 @@ function CategoryCard({ category, className = "" }) {
       to={`/product?categoryName=${encodeURIComponent(category.name)}`}
       className={`group flex shrink-0 snap-start flex-col overflow-hidden rounded-xl border-0 bg-[#F5F0E6] p-0 shadow-none hover:border-0 hover:shadow-none ${className}`}
     >
-      <div className="flex aspect-[3/2] w-full items-center justify-center overflow-hidden">
+      <div className="flex aspect-square w-full shrink-0 items-center justify-center overflow-hidden rounded-xl">
         <CategoryImage src={category.image} name={category.name} />
       </div>
-      <p className="line-clamp-2 p-0 text-center text-xs font-bold uppercase leading-tight tracking-tight text-text-primary transition-colors duration-300 group-hover:text-[#5C4033] sm:text-sm md:text-base">
+      <p className="line-clamp-2 px-2 pt-3 text-center text-xs font-bold uppercase leading-tight tracking-tight text-text-primary transition-colors duration-300 group-hover:text-[#5C4033] sm:text-sm md:text-base">
         {category.name.replace(/&/g, " / ")}
       </p>
     </Link>

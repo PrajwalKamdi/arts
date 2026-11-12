@@ -1,7 +1,10 @@
-import { SITE_NAME } from "../config/site";
+import { SITE_LOGO_URL, SITE_NAME } from "../config/site.js";
+
+let scriptPromise;
 
 export function loadRazorpayScript() {
-  return new Promise((resolve) => {
+  if (scriptPromise) return scriptPromise;
+  scriptPromise = new Promise((resolve) => {
     if (typeof window === "undefined") {
       resolve(false);
       return;
@@ -13,11 +16,22 @@ export function loadRazorpayScript() {
     }
 
     const script = document.createElement("script");
+    const timeout = setTimeout(() => finish(false), 20000);
+    const finish = (loaded) => {
+      clearTimeout(timeout);
+      if (!loaded) script.remove();
+      resolve(loaded);
+    };
     script.src = "https://checkout.razorpay.com/v1/checkout.js";
-    script.onload = () => resolve(true);
-    script.onerror = () => resolve(false);
+    script.async = true;
+    script.onload = () => finish(Boolean(window.Razorpay));
+    script.onerror = () => finish(false);
     document.body.appendChild(script);
+  }).then((loaded) => {
+    if (!loaded) scriptPromise = undefined;
+    return loaded;
   });
+  return scriptPromise;
 }
 
 export function openRazorpayCheckout({
@@ -28,12 +42,15 @@ export function openRazorpayCheckout({
   description = "Order Payment",
   onSuccess,
   onDismiss,
+  onFailure,
 }) {
+  let succeeded = false;
   const options = {
     key: keyId,
     amount,
     currency: "INR",
     name: SITE_NAME,
+    image: SITE_LOGO_URL,
     description,
     order_id: razorpayOrderId,
     prefill: {
@@ -42,15 +59,18 @@ export function openRazorpayCheckout({
       contact: user?.phone || "",
     },
     theme: {
-      color: "#f97316",
+      color: "#3E3429",
     },
-    handler: onSuccess,
+    handler: (response) => {
+      succeeded = true;
+      onSuccess?.(response);
+    },
     modal: {
-      ondismiss: onDismiss,
+      ondismiss: () => { if (!succeeded) onDismiss?.(); },
     },
   };
 
   const rzp = new window.Razorpay(options);
-  rzp.on("payment.failed", onDismiss);
+  rzp.on("payment.failed", (response) => onFailure?.(response));
   rzp.open();
 }

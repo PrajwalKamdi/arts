@@ -1,4 +1,8 @@
-import crypto from "crypto";
+import {
+  getCheckoutFingerprint,
+  getRazorpayPaymentValidationError,
+  isValidRazorpaySignature,
+} from "../utils/razorpayVerification.js";
 import razorpay, { isRazorpayConfigured } from "../config/razorpay.js";
 import Order from "../models/order/Order.js";
 import Payment from "../models/payment/Payment.js";
@@ -119,6 +123,7 @@ export const createRazorpayOrder = async (req, res) => {
         userId: req.user._id.toString(),
         addressId: String(addressId),
         paymentMode,
+        checkoutFingerprint: getCheckoutFingerprint(result),
       },
     });
 
@@ -184,19 +189,41 @@ export const verifyRazorpayPayment = async (req, res) => {
       });
     }
 
-    const expectedSignature = crypto
-      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
-      .update(`${razorpay_order_id}|${razorpay_payment_id}`)
-      .digest("hex");
-
-    if (expectedSignature !== razorpay_signature) {
+    if (!isValidRazorpaySignature(razorpay_order_id, razorpay_payment_id, razorpay_signature, process.env.RAZORPAY_KEY_SECRET)) {
       return res.status(400).json({
         success: false,
         message: "Payment verification failed. Please try again.",
       });
     }
 
-    const razorpayOrder = await razorpay.orders.fetch(razorpay_order_id);
+    const existingOrder = await Order.findOne({
+      user: req.user._id,
+      razorpayOrderId: razorpay_order_id,
+      $or: [
+        { razorpayPaymentId: razorpay_payment_id },
+        { codAdvanceRazorpayPaymentId: razorpay_payment_id },
+      ],
+      status: { $ne: "attempted" },
+    });
+    if (existingOrder) {
+      return res.status(200).json({ success: true, message: "Order already confirmed", data: existingOrder });
+    }
+
+    const [razorpayOrder, payment] = await Promise.all([
+      razorpay.orders.fetch(razorpay_order_id),
+      razorpay.payments.fetch(razorpay_payment_id),
+    ]);
+    const paymentError = getRazorpayPaymentValidationError({
+      order: razorpayOrder,
+      payment,
+      userId: req.user._id,
+      addressId,
+      paymentMode,
+      paymentId: razorpay_payment_id,
+    });
+    if (paymentError) {
+      return res.status(400).json({ success: false, message: paymentError });
+    }
     const result = await prepareOrderData(req.user._id, addressId, {
       checkoutItems,
       checkoutMode,
@@ -215,6 +242,12 @@ export const verifyRazorpayPayment = async (req, res) => {
 
     const payableAmount = calculatePayableAmount(result.total, paymentMode);
     const expectedAmount = Math.round(payableAmount * 100);
+    if (razorpayOrder.notes?.checkoutFingerprint && razorpayOrder.notes.checkoutFingerprint !== getCheckoutFingerprint(result)) {
+      return res.status(409).json({
+        success: false,
+        message: "Checkout details changed after payment started. Contact support with your payment ID.",
+      });
+    }
     if (Number(razorpayOrder.amount) !== expectedAmount) {
       return res.status(400).json({
         success: false,
